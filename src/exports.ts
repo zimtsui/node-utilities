@@ -3,3 +3,4 @@ export * from './loadtext.ts';
 export * from './loadconf.ts';
 export * from './console.ts';
 export * from './error.ts';
+export * from './invoke-file.ts';

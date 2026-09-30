@@ -1,6 +1,6 @@
 {
   "name": "@zimtsui/node-utilities",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "",
   "exports": {
     ".": "./build/exports.js",

@@ -36,7 +36,7 @@ export async function invokeFileIgnore(
                 else resolve(exitCode!);
             });
         },
-    ).catch(e => Promise.reject(signal?.aborted ? signal.reason : new Error(undefined, { cause: e })));
+    ).catch(e => Promise.reject(new Error(void signal?.throwIfAborted(), { cause: e })));
 }
 
 /**
@@ -83,7 +83,7 @@ export async function invokeFile(
             process.stdin?.on('error', () => {});
             process.stdin?.end(input);
         },
-    ).catch(e => Promise.reject(signal?.aborted ? signal.reason : new Error(undefined, { cause: e })));
+    ).catch(e => Promise.reject(new Error(void signal?.throwIfAborted(), { cause: e })));
 }
 
 export interface ExitInfo {

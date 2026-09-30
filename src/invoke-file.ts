@@ -29,7 +29,7 @@ export function invokeFileIgnore(
             process.on('error', e => error = e);
             process.on('close', (code, signal) => {
                 abortSignal?.removeEventListener('abort', killProcess);
-                if (error) reject(error);
+                if (error) reject(new Error(undefined, { cause: error }));
                 else if (signal) reject(new Error(signal));
                 else resolve(code!);
             });
@@ -68,7 +68,7 @@ export function invokeFile(
             process.on('error', e => error = e);
             process.on('close', (code, signal) => {
                 abortSignal?.removeEventListener('abort', killProcess);
-                if (error) reject(error);
+                if (error) reject(new Error(undefined, { cause: error }));
                 else if (signal) reject(new Error(signal));
                 else resolve({
                     code: code!,

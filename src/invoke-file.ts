@@ -3,15 +3,16 @@ import { spawn } from 'node:child_process';
 import { kill } from 'node:process';
 
 
-export function invokeFileIgnore(
+/**
+ * @throws `signal.reason` if aborted by the signal.
+ */
+export async function invokeFileIgnore(
     file: string,
     args: string[] = [],
-    maybeSignals: (AbortSignal | undefined | null)[] = [],
+    signal?: AbortSignal,
 ): Promise<number> {
-    const abortSignals = maybeSignals.filter(maybeSignal => !!maybeSignal);
-    const abortSignal = abortSignals.length ? AbortSignal.any(abortSignals) : undefined;
-    abortSignal?.throwIfAborted();
-    return new Promise(
+    signal?.throwIfAborted();
+    return await new Promise<number>(
         (resolve, reject) => {
             const process = spawn(file, args, { stdio: 'ignore', detached: true });
 
@@ -23,30 +24,32 @@ export function invokeFileIgnore(
                     else throw e;
                 }
             }
-            abortSignal?.addEventListener('abort', killProcess);
+            signal?.addEventListener('abort', killProcess);
 
-            let error: Error | null = null;
-            process.on('error', e => error = e);
-            process.on('close', (code, signal) => {
-                abortSignal?.removeEventListener('abort', killProcess);
-                if (error) reject(new Error(undefined, { cause: error }));
-                else if (signal) reject(new Error(signal));
-                else resolve(code!);
+            const errors: Error[] = [];
+            process.on('error', e => errors.push(e));
+            process.on('close', (exitCode, systemSignal) => {
+                signal?.removeEventListener('abort', killProcess);
+                if (systemSignal) reject(new Error(systemSignal, { cause: errors }));
+                // Not documented by Node.js v24 official.
+                else if (exitCode! < 0) reject(new Error(undefined, { cause: errors }));
+                else resolve(exitCode!);
             });
         },
-    );
+    ).catch(e => Promise.reject(signal?.aborted ? signal.reason : new Error(undefined, { cause: e })));
 }
 
-export function invokeFile(
+/**
+ * @throws `signal.reason` if aborted by the signal.
+ */
+export async function invokeFile(
     file: string,
     args: string[] = [],
-    maybeSignals: (AbortSignal | undefined | null)[] = [],
+    signal?: AbortSignal,
     input: string = '',
 ): Promise<ExitInfo> {
-    const abortSignals = maybeSignals.filter(maybeSignal => !!maybeSignal);
-    const abortSignal = abortSignals.length ? AbortSignal.any(abortSignals) : undefined;
-    abortSignal?.throwIfAborted();
-    return new Promise(
+    signal?.throwIfAborted();
+    return await new Promise<ExitInfo>(
         (resolve, reject) => {
             const process = spawn(file, args, { detached: true });
 
@@ -58,20 +61,21 @@ export function invokeFile(
                     else throw e;
                 }
             }
-            abortSignal?.addEventListener('abort', killProcess);
+            signal?.addEventListener('abort', killProcess);
 
             const stdoutBuffers: Buffer[] = [], stderrBuffers: Buffer[] = [];
             process.stdout?.on('data', data => stdoutBuffers.push(data));
             process.stderr?.on('data', data => stderrBuffers.push(data));
 
-            let error: Error | null = null;
-            process.on('error', e => error = e);
-            process.on('close', (code, signal) => {
-                abortSignal?.removeEventListener('abort', killProcess);
-                if (error) reject(new Error(undefined, { cause: error }));
-                else if (signal) reject(new Error(signal));
+            const errors: Error[] = [];
+            process.on('error', e => errors.push(e));
+            process.on('close', (exitCode, systemSignal) => {
+                signal?.removeEventListener('abort', killProcess);
+                if (systemSignal) reject(new Error(systemSignal, { cause: errors }));
+                // Not documented by Node.js v24 official.
+                else if (exitCode! < 0) reject(new Error(undefined, { cause: errors }))
                 else resolve({
-                    code: code!,
+                    code: exitCode!,
                     stdout: Buffer.concat(stdoutBuffers).toString(),
                     stderr: Buffer.concat(stderrBuffers).toString(),
                 });
@@ -79,8 +83,7 @@ export function invokeFile(
             process.stdin?.on('error', () => {});
             process.stdin?.end(input);
         },
-    );
-
+    ).catch(e => Promise.reject(signal?.aborted ? signal.reason : new Error(undefined, { cause: e })));
 }
 
 export interface ExitInfo {

@@ -3,9 +3,6 @@ import { spawn } from 'node:child_process';
 import { kill } from 'node:process';
 
 
-/**
- * @throws `signal.reason` if aborted by the signal.
- */
 export async function invokeFileIgnore(
     file: string,
     args: string[] = [],
@@ -28,20 +25,17 @@ export async function invokeFileIgnore(
 
             const errors: Error[] = [];
             process.on('error', e => errors.push(e));
-            process.on('close', (exitCode, systemSignal) => {
+            process.on('close', (code, sig) => {
                 signal?.removeEventListener('abort', killProcess);
-                if (systemSignal) reject(new Error(systemSignal, { cause: errors }));
+                if (sig) reject(new AggregateError(errors, sig));
                 // Not documented by Node.js v24 official.
-                else if (exitCode! < 0) reject(new Error(undefined, { cause: errors }));
-                else resolve(exitCode!);
+                else if (code! < 0) reject(new AggregateError(errors));
+                else resolve(code!);
             });
         },
-    ).catch(e => Promise.reject(new Error(void signal?.throwIfAborted(), { cause: e })));
+    ).catch(e => Promise.reject(new Error(undefined, { cause: e })));
 }
 
-/**
- * @throws `signal.reason` if aborted by the signal.
- */
 export async function invokeFile(
     file: string,
     args: string[] = [],
@@ -69,13 +63,13 @@ export async function invokeFile(
 
             const errors: Error[] = [];
             process.on('error', e => errors.push(e));
-            process.on('close', (exitCode, systemSignal) => {
+            process.on('close', (code, sig) => {
                 signal?.removeEventListener('abort', killProcess);
-                if (systemSignal) reject(new Error(systemSignal, { cause: errors }));
+                if (sig) reject(new AggregateError(errors, sig));
                 // Not documented by Node.js v24 official.
-                else if (exitCode! < 0) reject(new Error(undefined, { cause: errors }))
+                else if (code! < 0) reject(new AggregateError(errors))
                 else resolve({
-                    code: exitCode!,
+                    code: code!,
                     stdout: Buffer.concat(stdoutBuffers).toString(),
                     stderr: Buffer.concat(stderrBuffers).toString(),
                 });
@@ -83,7 +77,7 @@ export async function invokeFile(
             process.stdin?.on('error', () => {});
             process.stdin?.end(input);
         },
-    ).catch(e => Promise.reject(new Error(void signal?.throwIfAborted(), { cause: e })));
+    ).catch(e => Promise.reject(new Error(undefined, { cause: e })));
 }
 
 export interface ExitInfo {

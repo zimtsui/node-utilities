@@ -13,7 +13,7 @@ export async function invokeFileIgnore(
         (resolve, reject) => {
             const process = spawn(file, args, { stdio: 'ignore', detached: true });
 
-            function killProcess() {
+            function killGroup() {
                 try {
                     if (process.pid) kill(-process.pid, 'SIGKILL');
                 } catch (e) {
@@ -21,12 +21,12 @@ export async function invokeFileIgnore(
                     else throw e;
                 }
             }
-            signal?.addEventListener('abort', killProcess);
+            signal?.addEventListener('abort', killGroup);
 
             const errors: Error[] = [];
             process.on('error', e => errors.push(e));
             process.on('close', (code, sig) => {
-                signal?.removeEventListener('abort', killProcess);
+                signal?.removeEventListener('abort', killGroup);
                 if (sig) reject(new AggregateError(errors, sig));
                 // Not documented by Node.js v24 official.
                 else if (code! < 0) reject(new AggregateError(errors));
@@ -47,7 +47,7 @@ export async function invokeFile(
         (resolve, reject) => {
             const process = spawn(file, args, { detached: true });
 
-            function killProcess() {
+            function killGroup() {
                 try {
                     if (process.pid) kill(-process.pid, 'SIGKILL');
                 } catch (e) {
@@ -55,7 +55,7 @@ export async function invokeFile(
                     else throw e;
                 }
             }
-            signal?.addEventListener('abort', killProcess);
+            signal?.addEventListener('abort', killGroup);
 
             const stdoutBuffers: Buffer[] = [], stderrBuffers: Buffer[] = [];
             process.stdout?.on('data', data => stdoutBuffers.push(data));
@@ -64,7 +64,7 @@ export async function invokeFile(
             const errors: Error[] = [];
             process.on('error', e => errors.push(e));
             process.on('close', (code, sig) => {
-                signal?.removeEventListener('abort', killProcess);
+                signal?.removeEventListener('abort', killGroup);
                 if (sig) reject(new AggregateError(errors, sig));
                 // Not documented by Node.js v24 official.
                 else if (code! < 0) reject(new AggregateError(errors))

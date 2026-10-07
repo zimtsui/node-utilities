@@ -3,15 +3,16 @@ import { spawn } from 'node:child_process';
 import { kill } from 'node:process';
 
 
-export async function invokeFileIgnore(
-    file: string,
-    args: string[] = [],
-    signal?: AbortSignal,
-): Promise<number> {
+export async function invokeFileIgnore({
+    file,
+    args,
+    signal,
+    cwd,
+}: invokeFileIgnore.Params): Promise<number> {
     signal?.throwIfAborted();
     return await new Promise<number>(
         (resolve, reject) => {
-            const process = spawn(file, args, { stdio: 'ignore', detached: true });
+            const process = spawn(file, args ?? [], { stdio: 'ignore', detached: true, cwd });
 
             function killGroup() {
                 try {
@@ -35,17 +36,26 @@ export async function invokeFileIgnore(
         },
     ).catch(e => Promise.reject(new Error(undefined, { cause: e })));
 }
+export namespace invokeFileIgnore {
+    export interface Params {
+        file: string;
+        args?: string[],
+        signal?: AbortSignal;
+        cwd?: string;
+    }
+}
 
-export async function invokeFile(
-    file: string,
-    args: string[] = [],
-    signal?: AbortSignal,
-    input: string = '',
-): Promise<ExitInfo> {
+export async function invokeFile({
+    file,
+    args,
+    signal,
+    input,
+    cwd,
+}: invokeFile.Params): Promise<ExitInfo> {
     signal?.throwIfAborted();
     return await new Promise<ExitInfo>(
         (resolve, reject) => {
-            const process = spawn(file, args, { detached: true });
+            const process = spawn(file, args ?? [], { detached: true, cwd });
 
             function killGroup() {
                 try {
@@ -78,6 +88,15 @@ export async function invokeFile(
             process.stdin?.end(input);
         },
     ).catch(e => Promise.reject(new Error(undefined, { cause: e })));
+}
+export namespace invokeFile {
+    export interface Params {
+        file: string;
+        args?: string[],
+        signal?: AbortSignal;
+        cwd?: string;
+        input?: string;
+    }
 }
 
 export interface ExitInfo {

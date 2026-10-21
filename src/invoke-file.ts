@@ -1,4 +1,3 @@
-import { isSystemError } from './error.ts';
 import { spawn } from 'node:child_process';
 import { kill } from 'node:process';
 
@@ -18,7 +17,7 @@ export async function invokeFileIgnore({
                 try {
                     if (process.pid) kill(-process.pid, 'SIGKILL');
                 } catch (e) {
-                    if (isSystemError(e, 'ESRCH')) {}
+                    if ((e as NodeJS.ErrnoException).code === 'ESRCH') {}
                     else throw e;
                 }
             }
@@ -61,7 +60,7 @@ export async function invokeFile({
                 try {
                     if (process.pid) kill(-process.pid, 'SIGKILL');
                 } catch (e) {
-                    if (isSystemError(e, 'ESRCH')) {}
+                    if ((e as NodeJS.ErrnoException).code === 'ESRCH') {}
                     else throw e;
                 }
             }
